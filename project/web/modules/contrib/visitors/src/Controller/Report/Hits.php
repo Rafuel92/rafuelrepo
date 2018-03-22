@@ -11,6 +11,9 @@ use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\Datetime\Date;
 use Drupal\Core\Form\FormBuilderInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
+use Drupal\Component\Utility\SafeMarkup;
+use Drupal\Core\Url;
+use Drupal\Core\Link;
 
 class Hits extends ControllerBase {
   /**
@@ -32,7 +35,7 @@ class Hits extends ControllerBase {
    */
   public static function create(ContainerInterface $container) {
     return new static(
-      $container->get('date'),
+      $container->get('date.formatter'),
       $container->get('form_builder')
     );
   }
@@ -46,7 +49,7 @@ class Hits extends ControllerBase {
    * @param \Drupal\Core\Form\FormBuilderInterface $form_builder
    *   The form builder service.
    */
-  public function __construct(Date $date, FormBuilderInterface $form_builder) {
+  public function __construct( \Drupal\Core\Datetime\DateFormatter $date, FormBuilderInterface $form_builder) {
     $this->date        = $date;
     $this->formBuilder = $form_builder;
   }
@@ -62,14 +65,14 @@ class Hits extends ControllerBase {
     $header = $this->_getHeader();
 
     return array(
-      '#title' => check_plain(t('Hits from') . ' ' . $host),
+      '#title' => SafeMarkup::checkPlain(t('Hits from') . ' ' . $host),
       'visitors_date_filter_form' => $form,
       'visitors_table' => array(
-        '#theme'  => 'table',
+        '#type'  => 'table',
         '#header' => $header,
         '#rows'   => $this->_getData($header, $host),
       ),
-      'visitors_pager' => array('#theme' => 'pager')
+      'visitors_pager' => array('#type' => 'pager')
     );
   }
 
@@ -135,7 +138,7 @@ class Hits extends ControllerBase {
       ->extend('Drupal\Core\Database\Query\PagerSelectExtender')
       ->extend('Drupal\Core\Database\Query\TableSortExtender');
 
-    $query->leftJoin('users', 'u', 'u.uid=v.visitors_uid');
+    $query->leftJoin('users_field_data', 'u', 'u.uid=v.visitors_uid');
     $query->fields(
       'v',
       array(
@@ -172,15 +175,24 @@ class Hits extends ControllerBase {
 
     foreach ($results as $data) {
       $user = user_load($data->visitors_uid);
-      $username = array('#theme' => 'username', '#account' => $user);
+      $username = array('#type' => 'username', '#account' => $user);
+
+      $visitors_host_url = Url::fromRoute('visitors.hit_details',array("hit_id"=>$data->visitors_id));
+      $visitors_host_link = Link::fromTextAndUrl($this->t('Details'),$visitors_host_url);
+      $visitors_host_link = $visitors_host_link->toRenderable();
+
+
+      $user_profile_url = Url::fromRoute('entity.user.canonical',array("user"=>$user->id()));
+      $user_profile_link = Link::fromTextAndUrl($user->getAccountName(),$user_profile_url);
+      $user_profile_link = $user_profile_link->toRenderable();
+
       $rows[] = array(
         ++$i,
         $data->visitors_id,
-          $this->date->format($data->visitors_date_time, 'short'),
-              check_plain($data->visitors_title) . '<br/>' .
-          l($data->visitors_path, $data->visitors_url),
-        drupal_render($username),
-        l(t('details'), 'visitors/hits/' . $data->visitors_id)
+        $this->date->format($data->visitors_date_time, 'short'),
+              SafeMarkup::checkPlain($data->visitors_title) . '<br/>',
+        render($user_profile_link),
+        render($visitors_host_link)
       );
     }
 

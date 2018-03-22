@@ -11,6 +11,9 @@ use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\Datetime\Date;
 use Drupal\Core\Form\FormBuilderInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
+use Drupal\Component\Utility\UrlHelper;
+use Drupal\Core\Url;
+use Drupal\Core\Link;
 
 class Cities extends ControllerBase {
   /**
@@ -32,7 +35,7 @@ class Cities extends ControllerBase {
    */
   public static function create(ContainerInterface $container) {
     return new static(
-      $container->get('date'),
+      $container->get('date.formatter'),
       $container->get('form_builder')
     );
   }
@@ -46,7 +49,7 @@ class Cities extends ControllerBase {
    * @param \Drupal\Core\Form\FormBuilderInterface $form_builder
    *   The form builder service.
    */
-  public function __construct(Date $date, FormBuilderInterface $form_builder) {
+  public function __construct( \Drupal\Core\Datetime\DateFormatter $date, FormBuilderInterface $form_builder) {
     $this->date        = $date;
     $this->formBuilder = $form_builder;
   }
@@ -60,16 +63,15 @@ class Cities extends ControllerBase {
   public function display($country) {
     $form = $this->formBuilder->getForm('Drupal\visitors\Form\DateFilter');
     $header = $this->_getHeader();
-
     return array(
       '#title' => t('Visitors from') . ' ' . t($country),
       'visitors_date_filter_form' => $form,
       'visitors_table' => array(
-        '#theme'  => 'table',
+        '#type'  => 'table',
         '#header' => $header,
         '#rows'   => $this->_getData($header, $country),
       ),
-      'visitors_pager' => array('#theme' => 'pager')
+      'visitors_pager' => array('#type' => 'pager')
     );
   }
 
@@ -141,12 +143,13 @@ class Cities extends ControllerBase {
       if ($data->visitors_city == '') {
         $data->visitors_city = '(none)';
       }
+      $visitors_city_url = Url::fromRoute('visitors.city_hits',array("country"=>$country,"city"=>$data->visitors_city));
+      $visitors_city_link = Link::fromTextAndUrl($this->t($data->visitors_city),$visitors_city_url);
+      $visitors_city_link = $visitors_city_link->toRenderable();
       $rows[] = array(
         ++$i,
-        l(
-          $data->visitors_city,
-          'visitors/countries/' . $country . '/' . $data->visitors_city
-        ),
+        render($visitors_city_link),
+        $data->visitors_city,
         $data->count
       );
     }

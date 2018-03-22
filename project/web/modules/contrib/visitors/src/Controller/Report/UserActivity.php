@@ -32,7 +32,7 @@ class UserActivity extends ControllerBase {
    */
   public static function create(ContainerInterface $container) {
     return new static(
-      $container->get('date'),
+      $container->get('date.formatter'),
       $container->get('form_builder')
     );
   }
@@ -46,7 +46,7 @@ class UserActivity extends ControllerBase {
    * @param \Drupal\Core\Form\FormBuilderInterface $form_builder
    *   The form builder service.
    */
-  public function __construct(Date $date, FormBuilderInterface $form_builder) {
+  public function __construct( \Drupal\Core\Datetime\DateFormatter $date, FormBuilderInterface $form_builder) {
     $this->date        = $date;
     $this->formBuilder = $form_builder;
   }
@@ -64,11 +64,11 @@ class UserActivity extends ControllerBase {
     return array(
       'visitors_date_filter_form' => $form,
       'visitors_table' => array(
-        '#theme'  => 'table',
+        '#type'  => 'table',
         '#header' => $header,
         '#rows'   => $this->_getData($header),
       ),
-      'visitors_pager' => array('#theme' => 'pager')
+      'visitors_pager' => array('#type' => 'pager')
     );
   }
 
@@ -129,7 +129,7 @@ class UserActivity extends ControllerBase {
     $is_comment_module_exist = module_exists('comment');
     $items_per_page = \Drupal::config('visitors.config')->get('items_per_page');
 
-    $query = db_select('users', 'u')
+    $query = db_select('users_field_data', 'u')
       ->extend('Drupal\Core\Database\Query\PagerSelectExtender')
       ->extend('Drupal\Core\Database\Query\TableSortExtender');
 
@@ -156,7 +156,7 @@ class UserActivity extends ControllerBase {
     $query->orderByHeader($header);
     $query->limit($items_per_page);
   
-    $count_query = db_select('users', 'u');
+    $count_query = db_select('users_field_data', 'u');
     $count_query->leftJoin('visitors', 'v', 'u.uid=v.visitors_uid');
     $count_query->addExpression('COUNT(DISTINCT u.uid)');
     visitors_date_filter_sql_condition($count_query);
@@ -170,7 +170,7 @@ class UserActivity extends ControllerBase {
 
     foreach ($results as $data) {
       $user = user_load($data->uid);
-      $username = array('#theme' => 'username', '#account' => $user);
+      $username = array('#type' => 'username', '#account' => $user);
       if ($is_comment_module_exist) {
         $rows[] = array(
           ++$i,

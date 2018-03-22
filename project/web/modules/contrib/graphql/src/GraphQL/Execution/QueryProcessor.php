@@ -56,10 +56,10 @@ class QueryProcessor {
    *   The graphql container parameters.
    */
   public function __construct(
-    ContainerInterface $container,
-    SchemaLoader $schemaLoader,
-    AccountProxyInterface $currentUser,
-    array $parameters
+      ContainerInterface $container,
+      SchemaLoader $schemaLoader,
+      AccountProxyInterface $currentUser,
+      array $parameters
   ) {
     $this->container = $container;
     $this->currentUser = $currentUser;
@@ -88,7 +88,12 @@ class QueryProcessor {
     }
 
     /** @var \Youshido\GraphQL\Schema\AbstractSchema $schema */
-    $secure = !!($bypassSecurity || $this->currentUser->hasPermission('bypass graphql field security') || $this->parameters['development']);
+    if(isset($parameters['development'])){
+      $development = $this->parameters['development'];
+    } else {
+      $development = FALSE;
+    }
+    $secure = !!($bypassSecurity || $this->currentUser->hasPermission('bypass graphql field security') || $development);
     $processor = new Processor($this->container, $schema, $secure);
     $processor->processPayload($query, $variables);
 

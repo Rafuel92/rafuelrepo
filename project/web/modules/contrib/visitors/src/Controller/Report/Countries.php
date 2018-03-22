@@ -11,6 +11,8 @@ use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\Datetime\Date;
 use Drupal\Core\Form\FormBuilderInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
+use Drupal\Core\Url;
+use Drupal\Core\Link;
 
 class Countries extends ControllerBase {
   /**
@@ -32,7 +34,7 @@ class Countries extends ControllerBase {
    */
   public static function create(ContainerInterface $container) {
     return new static(
-      $container->get('date'),
+      $container->get('date.formatter'),
       $container->get('form_builder')
     );
   }
@@ -46,7 +48,7 @@ class Countries extends ControllerBase {
    * @param \Drupal\Core\Form\FormBuilderInterface $form_builder
    *   The form builder service.
    */
-  public function __construct(Date $date, FormBuilderInterface $form_builder) {
+  public function __construct( \Drupal\Core\Datetime\DateFormatter $date, FormBuilderInterface $form_builder) {
     $this->date        = $date;
     $this->formBuilder = $form_builder;
   }
@@ -64,11 +66,11 @@ class Countries extends ControllerBase {
     return array(
       'visitors_date_filter_form' => $form,
       'visitors_table' => array(
-        '#theme'  => 'table',
+        '#type'  => 'table',
         '#header' => $header,
         '#rows'   => $this->_getData($header),
       ),
-      'visitors_pager' => array('#theme' => 'pager')
+      'visitors_pager' => array('#type' => 'pager')
     );
   }
 
@@ -136,12 +138,12 @@ class Countries extends ControllerBase {
       if ($data->visitors_country_name == '') {
           $data->visitors_country_name = '(none)';
       }
+      $visitors_country_url = Url::fromRoute('visitors.cities',array("country"=>$data->visitors_country_name));
+      $visitors_country_link = Link::fromTextAndUrl($this->t($data->visitors_country_name),$visitors_country_url);
+      $visitors_country_link = $visitors_country_link->toRenderable();
       $rows[] = array(
         ++$i,
-        l(
-          t($data->visitors_country_name),
-          'visitors/countries/' . $data->visitors_country_name
-        ),
+        render($visitors_country_link),
         $data->count
       );
     }

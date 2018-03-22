@@ -5,7 +5,8 @@ namespace Drupal\visitors\Form;
 use Drupal\Component\Utility\NestedArray;
 use Drupal\Core\Datetime\DrupalDateTime;
 use Drupal\Core\Form\FormBase;
-use Drupal\datetime\DateHelper;
+use Drupal\Core\Datetime\DateHelper;
+use Drupal\Core\Form\FormStateInterface;
 
 class DateFilter extends FormBase {
   protected $_order = array('month', 'day', 'year');
@@ -43,7 +44,7 @@ class DateFilter extends FormBase {
     }
   }
 
-  public function buildForm(array $form, array &$form_state) {
+  public function buildForm(array $form, FormStateInterface $form_state) {
     $this->_setSessionDateRange();
 
     $from = DrupalDateTime::createFromArray($_SESSION['visitors_from']);
@@ -89,19 +90,20 @@ class DateFilter extends FormBase {
     return $form;
   }
 
-  public function validateForm(array &$form, array &$form_state) {
-    $from          = $form_state['input']['from'];
-    $to            = $form_state['input']['to'];
+  public function validateForm(array &$form, FormStateInterface $form_state) {
+    $fromvalue          = $form_state->getValue('from');
+    $tovalue     = $form_state->getValue('to');
+    $from = array();
+    $to = array();
+    $from['month'] = (int) $fromvalue->format('m');
+    $from['day']   = (int) $fromvalue->format('d');
+    $from['year']  = (int) $fromvalue->format('y');
 
-    $from['month'] = (int) $from['month'];
-    $from['day']   = (int) $from['day'];
-    $from['year']  = (int) $from['year'];
+    $to['month']   = (int) $tovalue->format('m');
+    $to['day']     = (int) $tovalue->format('d');
+    $to['year']    = (int) $tovalue->format('y');
 
-    $to['month']   = (int) $to['month'];
-    $to['day']     = (int) $to['day'];
-    $to['year']    = (int) $to['year'];
-
-    $error_message = t('The specified date is invalid.');
+    $error_message = $this->t('The specified date is invalid.');
 
     if (!checkdate($from['month'], $from['day'], $from['year'])) {
       return $this->setFormError('from', $form_state, $error_message);
@@ -127,9 +129,9 @@ class DateFilter extends FormBase {
     }
   }
 
-  public function submitForm(array &$form, array &$form_state) {
-    $from = $form_state['values']['from'];
-    $to   = $form_state['values']['to'];
+  public function submitForm(array &$form, FormStateInterface $form_state) {
+    $from = $form_state->getValue('from');
+    $to   = $form_state->getValue('to');
 
     $_SESSION['visitors_from'] = array(
       'month' => $from->format('n'),
@@ -151,11 +153,11 @@ class DateFilter extends FormBase {
    * If the date is valid, the date is set in the form as a string
    * using the format designated in __toString().
    */
-  public function datelistValidate($element, &$form_state) {
+  public function datelistValidate($element, FormStateInterface $form_state) {
     $input_exists = FALSE;
 
     $input = NestedArray::getValue(
-      $form_state['values'],
+      $form_state->getValues(),
       $element['#parents'],
       $input_exists
     );
@@ -170,23 +172,20 @@ class DateFilter extends FormBase {
       empty($input['month']) ||
       empty($input['day'])
     ) {
-      form_error($element, $form_state, t('The %field date is required.'));
+      $form_state->setError($element,$this->t('The %field date is required.'));
       return;
     }
 
     if (!checkdate($input['month'], $input['day'], $input['year'])) {
-      form_error($element, $form_state, t('The specified date is invalid.'));
+      $this->setError($element,$this->t('The specified date is invalid.'));
       return;
     }
-
     $date = DrupalDateTime::createFromArray($input);
-
     if ($date instanceOf DrupalDateTime && !$date->hasErrors()) {
-      form_set_value($element, $date, $form_state);
+      $form_state->setValueForElement($element, $date);
       return;
     }
-
-    form_error($element, $form_state, t('The %field date is invalid.'));
+    $form_state->setError($element,$this->t('The %field date is invalid.'));
   }
 
   /**

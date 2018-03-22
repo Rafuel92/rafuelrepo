@@ -11,6 +11,8 @@ use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\Datetime\Date;
 use Drupal\Core\Form\FormBuilderInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
+use Drupal\Core\Url;
+use Drupal\Core\Link;
 
 class CityHits extends ControllerBase {
   /**
@@ -32,7 +34,7 @@ class CityHits extends ControllerBase {
    */
   public static function create(ContainerInterface $container) {
     return new static(
-      $container->get('date'),
+      $container->get('date.formatter'),
       $container->get('form_builder')
     );
   }
@@ -46,7 +48,7 @@ class CityHits extends ControllerBase {
    * @param \Drupal\Core\Form\FormBuilderInterface $form_builder
    *   The form builder service.
    */
-  public function __construct(Date $date, FormBuilderInterface $form_builder) {
+  public function __construct( \Drupal\Core\Datetime\DateFormatter $date, FormBuilderInterface $form_builder) {
     $this->date        = $date;
     $this->formBuilder = $form_builder;
   }
@@ -65,11 +67,11 @@ class CityHits extends ControllerBase {
       '#title' => t('Hits from') . ' ' . t($city) . ', ' . t($country),
       'visitors_date_filter_form' => $form,
       'visitors_table' => array(
-        '#theme'  => 'table',
+        '#type'  => 'table',
         '#header' => $header,
         '#rows'   => $this->_getData($header, $country, $city),
       ),
-      'visitors_pager' => array('#theme' => 'pager')
+      'visitors_pager' => array('#type' => 'pager')
     );
   }
 
@@ -133,7 +135,7 @@ class CityHits extends ControllerBase {
       ->extend('Drupal\Core\Database\Query\PagerSelectExtender')
       ->extend('Drupal\Core\Database\Query\TableSortExtender');
 
-    $query->leftJoin('users', 'u', 'u.uid=v.visitors_id');
+    $query->leftJoin('users_field_data', 'u', 'u.uid=v.visitors_id');
     $query->fields(
       'v',
       array(
@@ -167,18 +169,18 @@ class CityHits extends ControllerBase {
 
     foreach ($results as $data) {
       $user = user_load($data->visitors_uid);
-      $username = array('#theme' => 'username', '#account' => $user);
-
+      $username = array('#type' => 'username', '#account' => $user);
       $rows[] = array(
         ++$i,
         $data->visitors_id,
         $this->date->format($data->visitors_date_time, 'short'),
-        check_plain(
+        /*check_plain(
           $data->visitors_title) . '<br/>' . l($data->visitors_path,
           $data->visitors_url
-        ),
+        ),*/
+        $data->visitors_url,
         drupal_render($username),
-        l(t('details'), 'visitors/hits/' . $data->visitors_id)
+        \Drupal::l($this->t('details'),\Drupal\Core\Url::fromRoute('visitors.hit_details',array("hit_id"=>$data->visitors_id)))
       );
     }
 

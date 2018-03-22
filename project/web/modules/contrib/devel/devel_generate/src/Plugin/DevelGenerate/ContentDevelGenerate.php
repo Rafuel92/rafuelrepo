@@ -274,6 +274,12 @@ class ContentDevelGenerate extends DevelGenerateBase implements ContainerFactory
       ),
     );
 
+    $form['exclude_anonymous'] = [
+      '#type' => 'checkbox',
+      '#title' => $this->t('Exclude anonymous user'),
+      '#description' => $this->t('Select this if you want to exclude anonymous user from authors'),
+    ];
+
     $form['#redirect'] = FALSE;
 
     return $form;
@@ -437,7 +443,8 @@ class ContentDevelGenerate extends DevelGenerateBase implements ContainerFactory
    */
   protected function develGenerateContentPreNode(&$results) {
     // Get user id.
-    $users = $this->getUsers();
+    $exclude_anonymous = $results['exclude_anonymous'];
+    $users = $this->getUsers($exclude_anonymous);
     $results['users'] = $users;
   }
 
@@ -493,10 +500,16 @@ class ContentDevelGenerate extends DevelGenerateBase implements ContainerFactory
 
   /**
    * Retrieve 50 uids from the database.
+   *
+   * @param $exclude_anonymous
+   *     Boolean taken from config form.
+   *
+   * @return array
    */
-  protected function getUsers() {
+  protected function getUsers($exclude_anonymous) {
     $users = array();
-    $result = db_query_range("SELECT uid FROM {users}", 0, 50);
+    $uid = $exclude_anonymous ? 1 : 0;
+    $result = db_query_range("SELECT uid FROM {users} WHERE uid >= :uid", 0, 50, [':uid' => $uid]);
     foreach ($result as $record) {
       $users[] = $record->uid;
     }

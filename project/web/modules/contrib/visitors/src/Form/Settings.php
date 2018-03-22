@@ -5,14 +5,16 @@ namespace Drupal\visitors\Form;
 use Drupal\Component\Utility\NestedArray;
 use Drupal\Core\Datetime\DrupalDateTime;
 use Drupal\Core\Form\ConfigFormBase;
+use Drupal\Core\Form\FormStateInterface;
 use Drupal\datetime\DateHelper;
+use Drupal\Core\Url;
 
 class Settings extends ConfigFormBase {
   public function getFormID() {
     return 'visitors_admin_settings';
   }
 
-  public function buildForm(array $form, array &$form_state) {
+  public function buildForm(array $form, FormStateInterface $form_state) {
     $config = \Drupal::config('visitors.config');
     $form = array();
 
@@ -138,10 +140,10 @@ class Settings extends ConfigFormBase {
         31536000 => '1 year',
       ),
       '#description' =>
-        t('Older visitors log entries (including referrer statistics) will be ' .
+        $this->t('Older visitors log entries (including referrer statistics) will be ' .
           'automatically discarded. (Requires a correctly configured ' .
           '<a href="@cron">cron maintenance task</a>.)',
-          array('@cron' => url('admin/reports/status'))
+          array('@cron' => Url::fromRoute('system.status')->toString())
         )
     );
 
@@ -171,64 +173,75 @@ class Settings extends ConfigFormBase {
     return parent::buildForm($form, $form_state);;
   }
 
-  public function submitForm(array &$form, array &$form_state) {
-    $config = \Drupal::config('visitors.config');
+  public function submitForm(array &$form, FormStateInterface $form_state) {
+    $config = \Drupal::configFactory()->getEditable('visitors.config');
     $config
       ->set(
         'show_total_visitors',
-        (int) $form_state['values']['show_total_visitors']
+        (int) $form_state->getValue('show_total_visitors')
       )
       ->set(
         'start_count_total_visitors',
-        (int) $form_state['values']['start_count_total_visitors']
+        (int) $form_state->getValue('start_count_total_visitors')
       )
       ->set(
         'show_unique_visitor',
-        (int) $form_state['values']['show_unique_visitor']
+        (int) $form_state->getValue('show_unique_visitor')
       )
       ->set(
         'show_registered_users_count',
-        (int) $form_state['values']['show_registered_users_count']
+        (int) $form_state->getValue('show_registered_users_count')
       )
       ->set(
         'show_last_registered_user',
-        (int) $form_state['values']['show_last_registered_user']
+        (int) $form_state->getValue('show_last_registered_user')
       )
       ->set(
         'show_published_nodes',
-        (int) $form_state['values']['show_published_nodes']
+        (int) $form_state->getValue('show_published_nodes')
       )
       ->set(
         'show_user_ip',
-        (int) $form_state['values']['show_user_ip']
+        (int) $form_state->getValue('show_user_ip')
       )
       ->set(
         'show_since_date',
-        (int) $form_state['values']['show_since_date']
+        (int) $form_state->getValue('show_since_date')
       )
       ->set(
         'exclude_administer_users',
-        (int) $form_state['values']['exclude_administer_users']
+        (int) $form_state->getValue('exclude_administer_users')
       )
       ->set(
         'items_per_page',
-        (int) $form_state['values']['items_per_page']
+        (int) $form_state->getValue('items_per_page')
       )
       ->set(
         'flush_log_timer',
-        (int) $form_state['values']['flush_log_timer']
+        (int) $form_state->getValue('flush_log_timer')
       )
       ->set(
         'chart_width',
-        (int) $form_state['values']['chart_width']
+        (int) $form_state->getValue('chart_width')
       )
       ->set(
         'chart_height',
-        (int) $form_state['values']['chart_height']
+        (int) $form_state->getValue('chart_height')
       )
       ->save();
 
     parent::submitForm($form, $form_state);
+  }
+
+  /**
+   * Gets the configuration names that will be editable.
+   *
+   * @return array
+   *   An array of configuration object names that are editable if called in
+   *   conjunction with the trait's config() method.
+   */
+  protected function getEditableConfigNames() {
+    return array();
   }
 }
 

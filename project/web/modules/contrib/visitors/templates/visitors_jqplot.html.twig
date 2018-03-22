@@ -1,9 +1,12 @@
 <div id="visitors_chart" style="width: {{ width }}px; height: {{ height }}px;"></div>
 
-<script type="text/javascript" src="/{{ path }}/jquery.jqplot/jquery.jqplot.min.js"></script>
-<script type="text/javascript" src="/{{ path }}/jquery.jqplot/plugins/jqplot.barRenderer.min.js"></script>
-<script type="text/javascript" src="/{{ path }}/jquery.jqplot/plugins/jqplot.categoryAxisRenderer.min.js"></script>
-<script type="text/javascript" src="/{{ path }}/jquery.jqplot/plugins/jqplot.pointLabels.min.js"></script>
+
+
+
+{{ attach_library('visitors/jqplot.pointLabels') }}
+{{ attach_library('visitors/jqplot.categoryAxisRenderer') }}
+{{ attach_library('visitors/jqplot.barRenderer') }}
+{{ attach_library('visitors/jquery.jqplot') }}
 
 <script type="text/javascript">
   jQuery(document).ready(function($){

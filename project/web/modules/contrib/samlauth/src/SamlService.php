@@ -126,6 +126,7 @@ class SamlService {
    */
   public function logout($return_to = null) {
     user_logout();
+    \Drupal::logger('redirect_all')->info('redirecting_after_logout');
     $this->getSamlAuth()->logout($return_to, array('referrer' => $return_to));
   }
 

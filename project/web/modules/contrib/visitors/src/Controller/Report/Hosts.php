@@ -11,6 +11,9 @@ use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\Datetime\Date;
 use Drupal\Core\Form\FormBuilderInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
+use Drupal\Core\Url;
+use Drupal\Core\Link;
+
 
 class Hosts extends ControllerBase {
   /**
@@ -32,7 +35,7 @@ class Hosts extends ControllerBase {
    */
   public static function create(ContainerInterface $container) {
     return new static(
-      $container->get('date'),
+      $container->get('date.formatter'),
       $container->get('form_builder')
     );
   }
@@ -46,7 +49,7 @@ class Hosts extends ControllerBase {
    * @param \Drupal\Core\Form\FormBuilderInterface $form_builder
    *   The form builder service.
    */
-  public function __construct(Date $date, FormBuilderInterface $form_builder) {
+  public function __construct( \Drupal\Core\Datetime\DateFormatter $date, FormBuilderInterface $form_builder) {
     $this->date        = $date;
     $this->formBuilder = $form_builder;
   }
@@ -64,11 +67,11 @@ class Hosts extends ControllerBase {
     return array(
       'visitors_date_filter_form' => $form,
       'visitors_table' => array(
-        '#theme'  => 'table',
+        '#type'  => 'table',
         '#header' => $header,
         '#rows'   => $this->_getData($header),
       ),
-      'visitors_pager' => array('#theme' => 'pager')
+      'visitors_pager' => array('#type' => 'pager')
     );
   }
 
@@ -131,7 +134,7 @@ class Hosts extends ControllerBase {
     $query->setCountQuery($count_query);
     $results = $query->execute();
 
-    $whois_enable = module_exists('whois');
+    $whois_enable = \Drupal::service('module_handler')->moduleExists('whois');
     $attr = array('attributes' =>
       array('target' => '_blank', 'title' => t('Whois lookup'))
     );
@@ -141,13 +144,19 @@ class Hosts extends ControllerBase {
     $page = isset($_GET['page']) ? $_GET['page'] : '';
     $i = 0 + $page * $items_per_page;
 
+
     foreach ($results as $data) {
       $ip = long2ip($data->visitors_ip);
+      $visitors_host_url = Url::fromRoute('visitors.host_hits',array("host"=>$ip));
+      $visitors_host_link = Link::fromTextAndUrl($ip,$visitors_host_url);
+      $visitors_host_link = $visitors_host_link->toRenderable();
+      //@TODO 8.3.X check if whois enable
       $rows[] = array(
         ++$i,
-        $whois_enable ? l($ip, 'whois/' . $ip, $attr) : check_plain($ip),
+        //$whois_enable ? l($ip, 'whois/' . $ip, $attr) : check_plain($ip),
+        $ip,
         $data->count,
-        l(t('hits'), 'visitors/hosts/' . $ip)
+        render($visitors_host_link)
       );
     }
 

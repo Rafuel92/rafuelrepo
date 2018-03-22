@@ -1,4 +1,4 @@
-<?
+<?php
 
 /**
  * @file
@@ -17,7 +17,7 @@ use Symfony\Component\HttpKernel\KernelEvents;
 use Symfony\Cmf\Component\Routing\RouteObjectInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Drupal\Core\Site\Settings;
-use Drupal\Core\Page\DefaultHtmlPageRenderer;
+use Drupal\Core\Url;
 
 /**
  * Store visitors data when a request terminates.
@@ -39,7 +39,7 @@ class KernelTerminateSubscriber implements EventSubscriberInterface {
   public function onTerminate(PostResponseEvent $event) {
     $this->request = $event->getRequest();
 
-    global $user;
+    $user = \Drupal::currentUser();
     $not_admin = !in_array('administrator', $user->getRoles());
     $log_admin = !\Drupal::config('visitors.config')->get('exclude_administer_users');
 
@@ -51,12 +51,12 @@ class KernelTerminateSubscriber implements EventSubscriberInterface {
         'visitors_date_time'  => time(),
         'visitors_url'        => $this->_getUrl(),
         'visitors_referer'    => $this->_getReferer(),
-        'visitors_path'       => _current_path(),
+        'visitors_path'       => Url::fromRoute('<current>')->toString(),
         'visitors_title'      => $this->_getTitle(),
         'visitors_user_agent' => $this->_getUserAgent()
       );
 
-      if (module_exists('visitors_geoip')) {
+      if (\Drupal::service('module_handler')->moduleExists('visitors_geoip')) {
         $geoip_data = $this->_getGeoipData($ip_str);
 
         $fields['visitors_continent_code'] = $geoip_data['continent_code'];
@@ -85,7 +85,7 @@ class KernelTerminateSubscriber implements EventSubscriberInterface {
    *   An array of event listener definitions.
    */
   public static function getSubscribedEvents() {
-    $events[KernelEvents::TERMINATE][] = array('onTerminate', 100);
+    $events["kernel.terminate"] = ['onTerminate'];
 
     return $events;
   }
@@ -97,12 +97,8 @@ class KernelTerminateSubscriber implements EventSubscriberInterface {
    *   Title of the current page.
    */
   protected function _getTitle() {
-    if ($route = $this->request->attributes->get(RouteObjectInterface::ROUTE_OBJECT)) {
-      $title = \Drupal::service('title_resolver')->getTitle($this->request, $route);
-      return htmlspecialchars_decode($title, ENT_QUOTES);
-    }
-
-    return '';
+    $title = \Drupal::routeMatch()->getRouteObject()->getDefault("_title");
+    return htmlspecialchars_decode($title, ENT_QUOTES);
   }
 
   /**
@@ -113,7 +109,7 @@ class KernelTerminateSubscriber implements EventSubscriberInterface {
    */
   protected function _getUrl() {
     return
-      urldecode(sprintf('http://%s%s', $_SERVER['HTTP_HOST'], request_uri()));
+      urldecode(sprintf('http://%s%s', $_SERVER['HTTP_HOST'], $this->request->getRequestUri()));
   }
 
   /**

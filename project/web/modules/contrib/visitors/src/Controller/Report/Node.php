@@ -33,7 +33,7 @@ class Node extends ControllerBase {
    */
   public static function create(ContainerInterface $container) {
     return new static(
-      $container->get('date'),
+      $container->get('date.formatter'),
       $container->get('form_builder')
     );
   }
@@ -47,7 +47,7 @@ class Node extends ControllerBase {
    * @param \Drupal\Core\Form\FormBuilderInterface $form_builder
    *   The form builder service.
    */
-  public function __construct(Date $date, FormBuilderInterface $form_builder) {
+  public function __construct( \Drupal\Core\Datetime\DateFormatter $date, FormBuilderInterface $form_builder) {
     $this->date        = $date;
     $this->formBuilder = $form_builder;
   }
@@ -65,11 +65,11 @@ class Node extends ControllerBase {
     return array(
       'visitors_date_filter_form' => $form,
       'visitors_table' => array(
-        '#theme'  => 'table',
+        '#type'  => 'table',
         '#header' => $header,
         '#rows'   => $this->_getData($header, $node),
       ),
-      'visitors_pager' => array('#theme' => 'pager')
+      'visitors_pager' => array('#type' => 'pager')
     );
   }
 
@@ -131,7 +131,7 @@ class Node extends ControllerBase {
     $query = db_select('visitors', 'v')
       ->extend('Drupal\Core\Database\Query\PagerSelectExtender')
       ->extend('Drupal\Core\Database\Query\TableSortExtender');
-    $query->leftJoin('users', 'u', 'u.uid=v.visitors_id');
+    $query->leftJoin('users_field_data', 'u', 'u.uid=v.visitors_id');
     $query->fields(
       'v',
       array(
@@ -141,13 +141,15 @@ class Node extends ControllerBase {
         'visitors_referer',
       )
     );
-    $value = $node->getValue();
-    $nid = (int) $value['nid'][0]['value'];
+
+
+    $nid = (int) $node->id();
     $query->fields('u', array('name', 'uid'));
     $db_or = db_or();
-    $db_or->condition('v.visitors_path', 'node/' . $nid, '=');
+    $db_or->condition('v.visitors_path', '/node/' . $nid, '=');
+    //@todo removed placeholder is this right?
     $db_or->condition(
-      'v.visitors_path', 'node/' . $nid . '/%', 'LIKE'
+      'v.visitors_path', '%/node/' . $nid."%", 'LIKE'
     );
     $query->condition($db_or);
 
@@ -161,7 +163,6 @@ class Node extends ControllerBase {
     visitors_date_filter_sql_condition($count_query);
     $query->setCountQuery($count_query);
     $results = $query->execute();
-
     $rows = array();
 
     $page = isset($_GET['page']) ? (int) $_GET['page'] : '';
@@ -171,7 +172,7 @@ class Node extends ControllerBase {
     foreach ($results as $data) {
       $user = user_load($data->visitors_uid);
       $username = array(
-        '#theme' => 'username',
+        '#type' => 'username',
         '#account' => $user
       );
 
@@ -179,9 +180,11 @@ class Node extends ControllerBase {
         ++$i,
         $data->visitors_id,
         $this->date->format($data->visitors_date_time, 'short'),
-        l($data->visitors_referer, $data->visitors_referer),
-        drupal_render($username),
-        l(t('details'), 'visitors/hits/' . $data->visitors_id)
+        //l($data->visitors_referer, $data->visitors_referer),
+        !empty($data->visitors_referer) ? $data->visitors_referer : 'none',
+        //drupal_render($username),
+        $user->getAccountName(),
+        \Drupal::l($this->t('details'),\Drupal\Core\Url::fromRoute('visitors.hit_details',array("hit_id"=>$data->visitors_id)))
       );
     }
 

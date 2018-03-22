@@ -289,7 +289,9 @@ class OneLogin_Saml2_Utils
                 $paramPrefix = '&';
             }
         }
-
+        $url = str_replace('http','https',$url);
+        $url = str_replace('httpss','https',$url);
+        \Drupal::logger('jbredirect')->debug($url);
         if ($stay) {
             return $url;
         }
@@ -467,7 +469,7 @@ class OneLogin_Saml2_Utils
         } elseif (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') {
             $protocol = 'https';
         }
-        return $protocol;
+        return 'https';
     }
 
     /**
